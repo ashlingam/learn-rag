@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="An interactive, single-file Retrieval Augmented Generation simulator." />
+  <title>RAG Lab — Interactive RAG Simulator</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0b1628;
+      --panel: rgba(17, 31, 52, 0.82);
+      --panel-strong: #111f34;
+      --panel-soft: rgba(255, 255, 255, 0.045);
+      --border: rgba(148, 163, 184, 0.18);
+      --border-strong: rgba(124, 154, 255, 0.4);
+      --text: #eef4ff;
+      --muted: #9fb0c8;
+      --muted-2: #70839e;
+      --primary: #7c9aff;
+      --primary-2: #9c7cff;
+      --cyan: #45d5e8;
+      --green: #55d6a5;
+      --amber: #ffcc72;
+      --red: #ff7f91;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 13px;
+      --radius-sm: 9px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 8% 3%, rgba(124, 154, 255, 0.16), transparent 26%),
+        radial-gradient(circle at 92% 8%, rgba(69, 213, 232, 0.11), transparent 24%),
+        linear-gradient(180deg, var(--bg) 0%, #081322 48%, #050c16 100%);
+      line-height: 1.5;
+    }
+
+    button, input, textarea, select { font: inherit; }
+
+    button { cursor: pointer; }
+
+    ::selection { background: rgba(124, 154, 255, 0.35); }
+
+    .app-shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 56px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 13px 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(7, 17, 31, 0.78);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 10px 30px rgba(124, 154, 255, 0.3);
+    }
+
+    .logo svg { width: 21px; height: 21px; }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 0 5px rgba(255, 204, 114, 0.1);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(310px, 0.7fr);
+      gap: 28px;
+      align-items: center;
+      padding: 76px 10px 42px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 15px;
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 18px;
+      max-width: 900px;
+      font-size: clamp(42px, 6vw, 78px);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, #ffffff 4%, #abc0ff 46%, #63d9e8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero p {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 44px;
+      padding: 10px 15px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      font-weight: 760;
+      transition: 160ms ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:focus-visible, .pipeline-step:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(124, 154, 255, 0.35);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      color: white;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 12px 35px rgba(124, 154, 255, 0.22);
+    }
+
+    .btn-primary:hover { box-shadow: 0 15px 40px rgba(124, 154, 255, 0.32); }
+
+    .btn-secondary {
+      color: var(--text);
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .btn-ghost {
+      min-height: 36px;
+      padding: 7px 10px;
+      color: var(--muted);
+      border-color: var(--border);
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .btn-danger { color: #ffd8de; }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 300px;
+      padding: 25px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(18, 34, 58, 0.92), rgba(10, 22, 39, 0.88));
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -55px -70px auto;
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(69, 213, 232, 0.22), transparent 67%);
+    }
+
+    .flow-mini {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .flow-num {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: #dbe5ff;
+      background: rgba(124, 154, 255, 0.15);
+      font-weight: 800;
+    }
+
+    .flow-row strong { display: block; font-size: 14px; }
+    .flow-row small { color: var(--muted-2); }
+    .flow-arrow { color: var(--muted-2); }
+
+    .pipeline-wrap {
+      position: sticky;
+      top: 84px;
+      z-index: 40;
+      margin: 4px 0 24px;
+      padding: 10px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      background: rgba(7, 17, 31, 0.82);
+      backdrop-filter: blur(16px);
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(145px, 1fr));
+      gap: 8px;
+      min-width: 1030px;
+    }
+
+    .pipeline-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 11px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+      text-align: left;
+      transition: 150ms ease;
+    }
+
+    .pipeline-step:hover { background: rgba(255, 255, 255, 0.04); }
+
+    .pipeline-step.active {
+      color: white;
+      border-color: rgba(124, 154, 255, 0.25);
+      background: rgba(124, 154, 255, 0.12);
+    }
+
+    .pipeline-step.complete .step-index {
+      color: #06251a;
+      background: var(--green);
+    }
+
+    .step-index {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: #cbd7e9;
+      background: rgba(255, 255, 255, 0.07);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .pipeline-step strong { display: block; font-size: 13px; }
+    .pipeline-step small { display: block; color: var(--muted-2); font-size: 11px; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .main-column { min-width: 0; }
+
+    .side-column {
+      position: sticky;
+      top: 174px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      margin-bottom: 22px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: var(--panel);
+      box-shadow: 0 16px 55px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(13px);
+      scroll-margin-top: 180px;
+    }
+
+    .panel.locked {
+      opacity: 0.56;
+      filter: saturate(0.65);
+    }
+
+    .panel.locked .panel-body { pointer-events: none; }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .panel-title-wrap {
+      display: flex;
+      gap: 13px;
+      align-items: flex-start;
+    }
+
+    .panel-icon {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #dbe5ff;
+      background: linear-gradient(145deg, rgba(124, 154, 255, 0.2), rgba(156, 124, 255, 0.12));
+      border: 1px solid rgba(124, 154, 255, 0.2);
+      font-weight: 850;
+    }
+
+    .panel h2 {
+      margin-bottom: 4px;
+      font-size: 22px;
+      letter-spacing: -0.025em;
+    }
+
+    .panel-subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .panel-badge {
+      padding: 6px 9px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 11px;
+      margin: 16px 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: #c9d5e8;
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: rgba(3, 10, 20, 0.52);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    input[type="text"] { min-height: 44px; padding: 10px 12px; }
+    textarea { min-height: 150px; padding: 12px; resize: vertical; }
+
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--border-strong);
+      box-shadow: 0 0 0 4px rgba(124, 154, 255, 0.08);
+      outline: none;
+    }
+
+    input[type="range"] { accent-color: var(--primary); }
+
+    .range-control {
+      display: grid;
+      grid-template-columns: auto minmax(120px, 220px) 52px;
+      align-items: center;
+      gap: 10px;
+      min-width: 290px;
+    }
+
+    .range-value {
+      padding: 5px 7px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--cyan);
+      background: rgba(255, 255, 255, 0.035);
+      font: 700 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-align: center;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .doc-card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--panel-soft);
+    }
+
+    .doc-card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .doc-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 5px rgba(124, 154, 255, 0.08);
+    }
+
+    .doc-title { font-weight: 790; }
+
+    .doc-card input { margin-bottom: 9px; }
+    .doc-card textarea { min-height: 210px; font-size: 13px; line-height: 1.55; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .stat {
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.028);
+    }
+
+    .stat-value { display: block; font-size: 22px; font-weight: 850; letter-spacing: -0.03em; }
+    .stat-label { color: var(--muted-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .chunk-grid, .vector-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      max-height: 500px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .chunk-card, .vector-card {
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .chunk-meta, .vector-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .chunk-card p { margin: 0; color: #c8d4e7; font-size: 13px; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #cfdbff;
+      background: rgba(124, 154, 255, 0.12);
+      font-size: 10px;
+      font-weight: 760;
+    }
+
+    .vector-code, .prompt-box, .answer-box {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(2, 8, 16, 0.62);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .vector-code {
+      padding: 10px;
+      color: #a9b9d2;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 16px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 365px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+        rgba(2, 8, 16, 0.38);
+      background-size: 28px 28px;
+    }
+
+    canvas { width: 100%; height: 365px; display: block; }
+
+    .canvas-legend {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 12px;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--muted);
+      background: rgba(7, 17, 31, 0.8);
+      font-size: 11px;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+    .legend-dot.query { background: var(--cyan); }
+
+    .query-box {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .sample-queries {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .sample-query {
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+    }
+
+    .sample-query:hover { color: var(--text); border-color: var(--border-strong); }
+
+    .vector-bars {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(5px, 1fr));
+      gap: 4px;
+      align-items: end;
+      min-height: 110px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(2, 8, 16, 0.42);
+    }
+
+    .vector-bar {
+      position: relative;
+      min-height: 4px;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, var(--cyan), var(--primary));
+      opacity: 0.8;
+    }
+
+    .retrieval-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 13px;
+    }
+
+    .retrieval-table th, .retrieval-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    .retrieval-table th {
+      color: var(--muted-2);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .retrieval-table tr:last-child td { border-bottom: 0; }
+    .retrieval-table tr.selected { background: rgba(124, 154, 255, 0.07); }
+
+    .score-wrap { min-width: 120px; }
+    .score-value { color: var(--cyan); font-family: ui-monospace, monospace; font-weight: 800; }
+    .score-track { height: 7px; margin-top: 7px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+    .score-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--cyan)); }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toggle-row input { width: 17px; height: 17px; accent-color: var(--primary); }
+
+    .prompt-box {
+      max-height: 520px;
+      padding: 16px;
+      color: #b8c7dc;
+      font-size: 12px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .answer-box {
+      min-height: 150px;
+      padding: 18px;
+      color: #dce7f7;
+      font-family: inherit;
+      line-height: 1.75;
+    }
+
+    .answer-box.empty { color: var(--muted-2); font-style: italic; }
+
+    .citation {
+      display: inline-flex;
+      margin-left: 4px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #d8e2ff;
+      background: rgba(124, 154, 255, 0.15);
+      font-size: 11px;
+      font-weight: 760;
+      vertical-align: 1px;
+    }
+
+    .callout {
+      display: flex;
+      gap: 11px;
+      margin-top: 16px;
+      padding: 13px;
+      border: 1px solid rgba(69, 213, 232, 0.16);
+      border-radius: 13px;
+      color: #c6d4e7;
+      background: rgba(69, 213, 232, 0.055);
+      font-size: 13px;
+    }
+
+    .callout strong { color: #e9fbff; }
+
+    .sidebar-card {
+      padding: 17px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: rgba(13, 26, 44, 0.82);
+      box-shadow: 0 12px 35px rgba(0,0,0,0.16);
+    }
+
+    .sidebar-card h3 { margin-bottom: 10px; font-size: 15px; }
+    .sidebar-card p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
+
+    .progress-track {
+      height: 8px;
+      margin: 13px 0 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.055);
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), var(--cyan));
+      transition: width 350ms ease;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .formula {
+      display: grid;
+      place-items: center;
+      min-height: 92px;
+      margin-top: 11px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      color: #d9e5ff;
+      background: rgba(2, 8, 16, 0.4);
+      font-family: Georgia, serif;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .glossary {
+      display: grid;
+      gap: 9px;
+    }
+
+    .glossary-item {
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .glossary-item:last-child { padding-bottom: 0; border-bottom: 0; }
+    .glossary-item strong { display: block; font-size: 12px; }
+    .glossary-item span { color: var(--muted-2); font-size: 11px; }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 150px;
+      padding: 24px;
+      border: 1px dashed var(--border);
+      border-radius: 13px;
+      color: var(--muted-2);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 100;
+      max-width: 330px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      color: white;
+      background: rgba(17, 31, 52, 0.96);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: 180ms ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .footer-note {
+      padding: 24px 8px 0;
+      color: var(--muted-2);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 1fr; }
+      .side-column { position: static; grid-template-columns: repeat(3, 1fr); }
+      .doc-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 800px) {
+      .app-shell { width: min(100% - 20px, 1440px); }
+      .hero { grid-template-columns: 1fr; padding-top: 52px; }
+      .hero-card { min-height: auto; }
+      .doc-grid, .split-grid, .chunk-grid, .vector-list { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .side-column { grid-template-columns: 1fr; }
+      .query-box { grid-template-columns: 1fr; }
+      .topbar .status-pill { display: none; }
+      .panel { padding: 18px; }
+    }
+
+    @media (max-width: 520px) {
+      h1 { font-size: 44px; }
+      .hero p { font-size: 16px; }
+      .topbar { top: 6px; }
+      .topbar-actions .btn-secondary { display: none; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .range-control { min-width: 100%; grid-template-columns: 1fr 52px; }
+      .range-control label { grid-column: 1 / -1; }
+      .panel-header { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="6" cy="6" r="2.2"></circle>
+            <circle cx="18" cy="6" r="2.2"></circle>
+            <circle cx="12" cy="18" r="2.2"></circle>
+            <path d="M7.9 7.2 10.7 16M16.1 7.2 13.3 16M8.2 6h7.6"></path>
+          </svg>
+        </div>
+        <div>RAG Lab<small>Interactive simulator</small></div>
+      </div>
+      <div class="topbar-actions">
+        <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Ready to ingest</span></div>
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        <button class="btn btn-primary" id="runAllTopBtn">Run full pipeline</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Learn by manipulating the pipeline</div>
+        <h1><span class="gradient-text">See RAG happen,</span><br />one step at a time.</h1>
+        <p>Edit the source documents, change chunk size, inspect vectors, run cosine similarity, choose top‑k context, and watch a grounded answer get assembled.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="runAllHeroBtn">▶ Run the full simulation</button>
+          <button class="btn btn-secondary" data-scroll="step-1">Start with the documents</button>
+        </div>
+      </div>
+      <div class="hero-card" aria-label="RAG flow overview">
+        <div class="flow-mini">
+          <div class="flow-row"><span class="flow-num">1</span><div><strong>Prepare knowledge</strong><small>Documents → chunks → vectors</small></div><span class="flow-arrow">→</span></div>
+          <div class="flow-row"><span class="flow-num">2</span><div><strong>Retrieve context</strong><small>Query vector → similarity → top‑k</small></div><span class="flow-arrow">→</span></div>
+          <div class="flow-row"><span class="flow-num">3</span><div><strong>Generate answer</strong><small>Question + context → LLM</small></div><span class="flow-arrow">✓</span></div>
+        </div>
+        <div class="callout"><span>ⓘ</span><div><strong>This is an educational simulation.</strong> It uses deterministic local vectors and an extractive answer generator, so no API key or external service is required.</div></div>
+      </div>
+    </section>
+
+    <div class="pipeline-wrap" aria-label="RAG pipeline navigation">
+      <nav class="pipeline" id="pipelineNav"></nav>
+    </div>
+
+    <div class="workspace">
+      <main class="main-column">
+        <section class="panel" id="step-1" data-step="1">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">01</div>
+              <div><h2>Knowledge source</h2><p class="panel-subtitle">RAG starts with external information the model can retrieve later.</p></div>
+            </div>
+            <span class="panel-badge">Offline ingestion</span>
+          </div>
+          <div class="panel-body">
+            <div class="doc-grid" id="docGrid"></div>
+            <div class="controls">
+              <button class="btn btn-secondary" id="addDocBtn">＋ Add document</button>
+              <button class="btn btn-primary" id="prepareDocsBtn">Use these documents</button>
+            </div>
+            <div class="callout"><span>💡</span><div><strong>Key distinction:</strong> documents are chunked and embedded before a user asks a question. The user query itself is usually embedded as one vector, not chopped into the same stored chunks.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-2" data-step="2">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">02</div>
+              <div><h2>Chunk the documents</h2><p class="panel-subtitle">Split long documents into retrievable passages with optional overlap.</p></div>
+            </div>
+            <span class="panel-badge">Text processing</span>
+          </div>
+          <div class="panel-body">
+            <div class="controls">
+              <div class="range-control"><label for="chunkSize">Chunk size</label><input type="range" id="chunkSize" min="24" max="90" value="48" /><span class="range-value" id="chunkSizeValue">48</span></div>
+              <div class="range-control"><label for="chunkOverlap">Overlap</label><input type="range" id="chunkOverlap" min="0" max="20" value="8" /><span class="range-value" id="chunkOverlapValue">8</span></div>
+              <button class="btn btn-primary" id="chunkBtn">Create chunks</button>
+            </div>
+            <div class="stats-grid">
+              <div class="stat"><span class="stat-value" id="docCountStat">0</span><span class="stat-label">Documents</span></div>
+              <div class="stat"><span class="stat-value" id="wordCountStat">0</span><span class="stat-label">Words</span></div>
+              <div class="stat"><span class="stat-value" id="chunkCountStat">0</span><span class="stat-label">Chunks</span></div>
+              <div class="stat"><span class="stat-value" id="avgChunkStat">0</span><span class="stat-label">Avg. words / chunk</span></div>
+            </div>
+            <div id="chunkOutput" class="empty-state">Create chunks to see how your source material is divided.</div>
+            <div class="callout"><span>↔</span><div><strong>Tradeoff:</strong> small chunks are precise but can lose context. Large chunks preserve context but may retrieve extra irrelevant text. Overlap helps protect ideas that cross a boundary.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-3" data-step="3">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">03</div>
+              <div><h2>Embed and index the chunks</h2><p class="panel-subtitle">Convert each chunk into a numerical vector and store it with its text and metadata.</p></div>
+            </div>
+            <span class="panel-badge">Vector index</span>
+          </div>
+          <div class="panel-body">
+            <div class="controls">
+              <div class="range-control"><label for="vectorDim">Vector dimensions</label><input type="range" id="vectorDim" min="16" max="64" step="8" value="32" /><span class="range-value" id="vectorDimValue">32</span></div>
+              <button class="btn btn-primary" id="embedChunksBtn">Generate chunk embeddings</button>
+            </div>
+            <div class="split-grid">
+              <div id="vectorList" class="empty-state">Vectors will appear here as arrays of numbers.</div>
+              <div class="canvas-wrap">
+                <canvas id="vectorCanvas" width="680" height="365" aria-label="Two-dimensional projection of chunk embeddings"></canvas>
+                <div class="canvas-legend"><span class="legend-item"><span class="legend-dot"></span>Chunk</span><span class="legend-item"><span class="legend-dot query"></span>Query</span></div>
+              </div>
+            </div>
+            <div class="callout"><span>🧭</span><div><strong>Important:</strong> the canvas is only a 2D projection for intuition. Real embeddings often have hundreds or thousands of dimensions, and nearby vectors represent semantically similar text.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-4" data-step="4">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">04</div>
+              <div><h2>Embed the user query</h2><p class="panel-subtitle">Represent the question in the same vector space as the stored chunks.</p></div>
+            </div>
+            <span class="panel-badge">Online query</span>
+          </div>
+          <div class="panel-body">
+            <div class="query-box">
+              <input type="text" id="queryInput" value="How many days can employees work remotely, and what approval is required?" aria-label="User query" />
+              <button class="btn btn-primary" id="embedQueryBtn">Embed query</button>
+            </div>
+            <div class="sample-queries">
+              <button class="sample-query">When do expense reports need to be submitted?</button>
+              <button class="sample-query">How much PTO can carry over?</button>
+              <button class="sample-query">What are the remote work security rules?</button>
+            </div>
+            <div style="margin-top:16px">
+              <div class="vector-bars" id="queryVectorBars" aria-label="Query embedding visualization"></div>
+              <div class="vector-code" id="queryVectorText">No query embedding yet.</div>
+            </div>
+            <div class="callout"><span>🔁</span><div><strong>Shared space:</strong> retrieval works because the query and document chunks are embedded by a compatible model. Their vectors can then be compared mathematically.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-5" data-step="5">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">05</div>
+              <div><h2>Run similarity search</h2><p class="panel-subtitle">Compare the query vector with every chunk vector and retrieve the top‑k matches.</p></div>
+            </div>
+            <span class="panel-badge">Retrieval</span>
+          </div>
+          <div class="panel-body">
+            <div class="controls">
+              <div class="range-control"><label for="topK">Top‑k results</label><input type="range" id="topK" min="1" max="6" value="3" /><span class="range-value" id="topKValue">3</span></div>
+              <label class="toggle-row"><input type="checkbox" id="keywordBoost" /> Apply simple keyword reranking</label>
+              <button class="btn btn-primary" id="retrieveBtn">Search vector index</button>
+            </div>
+            <div id="retrievalOutput" class="empty-state">Run retrieval to rank all chunks by cosine similarity.</div>
+            <div class="callout"><span>cos</span><div><strong>Cosine similarity</strong> compares vector direction rather than magnitude. A score closer to 1 means the query and chunk point in a more similar direction.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-6" data-step="6">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">06</div>
+              <div><h2>Assemble the augmented prompt</h2><p class="panel-subtitle">Place the original question and retrieved passages into the LLM’s context window.</p></div>
+            </div>
+            <span class="panel-badge">Augmentation</span>
+          </div>
+          <div class="panel-body">
+            <div class="controls"><button class="btn btn-primary" id="buildPromptBtn">Build augmented prompt</button><button class="btn btn-secondary" id="copyPromptBtn">Copy prompt</button></div>
+            <pre class="prompt-box" id="promptOutput">The prompt will appear here after retrieval.</pre>
+            <div class="callout"><span>🧩</span><div><strong>RAG does not modify the model’s weights.</strong> It temporarily augments the model’s input with retrieved context. Fine-tuning changes model behavior; RAG supplies information at inference time.</div></div>
+          </div>
+        </section>
+
+        <section class="panel locked" id="step-7" data-step="7">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-icon">07</div>
+              <div><h2>Generate a grounded answer</h2><p class="panel-subtitle">The LLM interprets the question and context, then produces a response.</p></div>
+            </div>
+            <span class="panel-badge">Generation</span>
+          </div>
+          <div class="panel-body">
+            <div class="controls"><button class="btn btn-primary" id="generateBtn">Generate simulated answer</button><button class="btn btn-secondary" id="runAgainBtn">Run again</button></div>
+            <div class="answer-box empty" id="answerOutput">No answer generated yet.</div>
+            <div class="stats-grid">
+              <div class="stat"><span class="stat-value" id="contextChunksStat">0</span><span class="stat-label">Context chunks</span></div>
+              <div class="stat"><span class="stat-value" id="contextWordsStat">0</span><span class="stat-label">Context words</span></div>
+              <div class="stat"><span class="stat-value" id="answerWordsStat">0</span><span class="stat-label">Answer words</span></div>
+              <div class="stat"><span class="stat-value" id="groundingStat">—</span><span class="stat-label">Grounding signal</span></div>
+            </div>
+            <div class="callout"><span>⚠</span><div><strong>Retrieval is not a guarantee of truth.</strong> The system can retrieve the wrong passages, omit a critical source, or generate claims not supported by context. Production RAG systems need evaluation, citations, access controls, and fallback behavior.</div></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="side-column">
+        <div class="sidebar-card">
+          <h3>Pipeline progress</h3>
+          <p id="progressMessage">Start by confirming the knowledge source.</p>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-label"><span id="progressStep">Step 0 of 7</span><span id="progressPct">0%</span></div>
+        </div>
+
+        <div class="sidebar-card">
+          <h3>Cosine similarity</h3>
+          <p>For normalized vectors, similarity is the dot product of the query vector and chunk vector.</p>
+          <div class="formula">cos(θ) = (q · c) / (‖q‖ ‖c‖)</div>
+        </div>
+
+        <div class="sidebar-card">
+          <h3>RAG glossary</h3>
+          <div class="glossary">
+            <div class="glossary-item"><strong>Chunk</strong><span>A retrievable passage cut from a source document.</span></div>
+            <div class="glossary-item"><strong>Embedding</strong><span>A numerical representation of meaning.</span></div>
+            <div class="glossary-item"><strong>Vector index</strong><span>Storage optimized for nearest-neighbor search.</span></div>
+            <div class="glossary-item"><strong>Top‑k</strong><span>The number of highest-ranked chunks returned.</span></div>
+            <div class="glossary-item"><strong>Context window</strong><span>The text and tokens the LLM can inspect for one response.</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="footer-note">Single-file demo · No external libraries · No network requests · All processing happens in your browser</div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const DEFAULT_DOCS = [
+      {
+        title: "Remote Work Policy",
+        text: "Employees may work remotely up to three days per week. A recurring remote schedule requires approval from the employee's direct manager. Teams should maintain core collaboration hours from 10:00 AM to 3:00 PM Central Time. Employees working remotely must use the company VPN when accessing internal systems, keep devices encrypted, and avoid discussing confidential information in public locations. Managers may require additional in-office days for planning sessions, customer meetings, or performance support."
+      },
+      {
+        title: "Expense Reimbursement Guide",
+        text: "Employees should submit business expenses within 30 calendar days of the purchase. Itemized receipts are required for expenses above $25. Airfare should normally be booked in economy class, and hotel costs should remain within the destination's published travel limit. A manager must approve exceptions before the expense is incurred. Finance reviews complete reports within ten business days."
+      },
+      {
+        title: "Paid Time Off Handbook",
+        text: "Full-time employees receive 20 days of paid time off each calendar year. Up to five unused days may carry over into the next calendar year. Employees should request planned leave at least two weeks in advance when possible. Requests are approved by the employee's manager based on staffing needs. Unused days above the carryover limit expire on December 31."
+      }
+    ];
+
+    const STEP_META = [
+      { n: 1, title: "Knowledge", sub: "Source documents" },
+      { n: 2, title: "Chunking", sub: "Split passages" },
+      { n: 3, title: "Embeddings", sub: "Index vectors" },
+      { n: 4, title: "Query", sub: "Embed question" },
+      { n: 5, title: "Retrieval", sub: "Rank top‑k" },
+      { n: 6, title: "Prompt", sub: "Add context" },
+      { n: 7, title: "Answer", sub: "Generate" }
+    ];
+
+    const STOPWORDS = new Set("a an and are as at be by can could did do does for from had has have how i if in into is it its may must of on or should that the their them they this to up was were what when where which who will with would you your".split(" "));
+
+    const SYNONYMS = {
+      remotely: "remote", remote: "remote", home: "remote", hybrid: "remote",
+      authorization: "approval", approve: "approval", approved: "approval",
+      manager: "manager", supervisor: "manager",
+      days: "day", submitted: "submit", submitting: "submit",
+      expenses: "expense", receipts: "receipt", vacations: "pto", vacation: "pto",
+      leave: "pto", security: "secure", encrypted: "secure", vpn: "secure"
+    };
+
+    const state = {
+      docs: [],
+      chunks: [],
+      chunkVectors: [],
+      query: "",
+      queryVector: [],
+      ranked: [],
+      selected: [],
+      prompt: "",
+      currentStep: 1,
+      completedStep: 0,
+      vectorDim: 32,
+      runningAll: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => el.classList.remove("show"), 2400);
+    }
+
+    function setStatus(text, tone = "amber") {
+      $("statusText").textContent = text;
+      const colors = { amber: "var(--amber)", green: "var(--green)", cyan: "var(--cyan)", red: "var(--red)" };
+      $("statusDot").style.background = colors[tone] || colors.amber;
+      $("statusDot").style.boxShadow = `0 0 0 5px color-mix(in srgb, ${colors[tone] || colors.amber} 12%, transparent)`;
+    }
+
+    function initPipeline() {
+      $("pipelineNav").innerHTML = STEP_META.map(step => `
+        <button class="pipeline-step ${step.n === 1 ? "active" : ""}" data-nav-step="${step.n}">
+          <span class="step-index">${step.n}</span>
+          <span><strong>${step.title}</strong><small>${step.sub}</small></span>
+        </button>
+      `).join("");
+
+      document.querySelectorAll("[data-nav-step]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const step = Number(btn.dataset.navStep);
+          setActiveStep(step, true);
+        });
+      });
+    }
+
+    function initDocs(docs = DEFAULT_DOCS) {
+      const grid = $("docGrid");
+      grid.innerHTML = "";
+      docs.forEach((doc, index) => addDocumentCard(doc.title, doc.text, index));
+    }
+
+    function addDocumentCard(title = "New Document", text = "Paste source text here.", index = document.querySelectorAll(".doc-card").length) {
+      const card = document.createElement("div");
+      card.className = "doc-card";
+      card.innerHTML = `
+        <div class="doc-card-head"><span class="doc-dot"></span><span class="doc-title">Source ${index + 1}</span><button class="btn btn-ghost btn-danger remove-doc" style="margin-left:auto">Remove</button></div>
+        <input type="text" class="doc-title-input" value="${escapeHtml(title)}" aria-label="Document title" />
+        <textarea class="doc-text-input" aria-label="Document text">${escapeHtml(text)}</textarea>
+      `;
+      card.querySelector(".remove-doc").addEventListener("click", () => {
+        if (document.querySelectorAll(".doc-card").length <= 1) return toast("Keep at least one source document.");
+        card.remove();
+        renumberDocs();
+        invalidateFrom(1);
+      });
+      card.querySelectorAll("input, textarea").forEach(el => el.addEventListener("input", () => invalidateFrom(1)));
+      $("docGrid").appendChild(card);
+    }
+
+    function renumberDocs() {
+      document.querySelectorAll(".doc-card").forEach((card, i) => {
+        card.querySelector(".doc-title").textContent = `Source ${i + 1}`;
+      });
+    }
+
+    function readDocs() {
+      return [...document.querySelectorAll(".doc-card")].map((card, i) => ({
+        id: `doc-${i + 1}`,
+        title: card.querySelector(".doc-title-input").value.trim() || `Document ${i + 1}`,
+        text: card.querySelector(".doc-text-input").value.trim()
+      })).filter(doc => doc.text.length > 0);
+    }
+
+    function invalidateFrom(step) {
+      if (step <= 1) state.docs = [];
+      if (step <= 2) state.chunks = [];
+      if (step <= 3) state.chunkVectors = [];
+      if (step <= 4) state.queryVector = [];
+      if (step <= 5) { state.ranked = []; state.selected = []; }
+      if (step <= 6) state.prompt = "";
+      state.completedStep = Math.min(state.completedStep, step - 1);
+      updateProgress();
+    }
+
+    function setActiveStep(step, scroll = false) {
+      state.currentStep = Math.max(1, Math.min(7, step));
+      document.querySelectorAll(".pipeline-step").forEach(btn => {
+        const n = Number(btn.dataset.navStep);
+        btn.classList.toggle("active", n === state.currentStep);
+        btn.classList.toggle("complete", n <= state.completedStep);
+      });
+      if (scroll) $("step-" + state.currentStep).scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function unlockThrough(step) {
+      document.querySelectorAll(".panel").forEach(panel => {
+        const n = Number(panel.dataset.step);
+        panel.classList.toggle("locked", n > step);
+      });
+    }
+
+    function completeStep(step) {
+      state.completedStep = Math.max(state.completedStep, step);
+      unlockThrough(Math.min(7, step + 1));
+      setActiveStep(Math.min(7, step + 1));
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const pct = Math.round((state.completedStep / 7) * 100);
+      $("progressFill").style.width = `${pct}%`;
+      $("progressStep").textContent = `Step ${state.completedStep} of 7`;
+      $("progressPct").textContent = `${pct}%`;
+      const messages = [
+        "Start by confirming the knowledge source.",
+        "Documents selected. Next, split them into chunks.",
+        "Chunks created. Next, embed and index them.",
+        "Chunk vectors stored. Now embed the user query.",
+        "Query embedded. Compare it with the chunk vectors.",
+        "Relevant context retrieved. Build the LLM prompt.",
+        "Prompt assembled. Generate the final answer.",
+        "Pipeline complete. Change an input and test it again."
+      ];
+      $("progressMessage").textContent = messages[state.completedStep];
+      document.querySelectorAll(".pipeline-step").forEach(btn => {
+        const n = Number(btn.dataset.navStep);
+        btn.classList.toggle("complete", n <= state.completedStep);
+      });
+    }
+
+    function prepareDocuments() {
+      const docs = readDocs();
+      if (!docs.length) return toast("Add at least one document with text.");
+      state.docs = docs;
+      invalidateFrom(2);
+      $("docCountStat").textContent = docs.length;
+      $("wordCountStat").textContent = docs.reduce((sum, d) => sum + wordCount(d.text), 0);
+      completeStep(1);
+      setStatus(`${docs.length} documents ready`, "green");
+      toast("Knowledge source prepared.");
+    }
+
+    function wordCount(text) {
+      return (text.trim().match(/\S+/g) || []).length;
+    }
+
+    function chunkDocuments() {
+      if (!state.docs.length) prepareDocuments();
+      if (!state.docs.length) return;
+
+      const size = Number($("chunkSize").value);
+      const overlap = Math.min(Number($("chunkOverlap").value), size - 1);
+      const chunks = [];
+
+      state.docs.forEach((doc, docIndex) => {
+        const words = doc.text.replace(/\s+/g, " ").trim().split(" ");
+        let start = 0;
+        let chunkIndex = 0;
+        while (start < words.length) {
+          const end = Math.min(words.length, start + size);
+          const text = words.slice(start, end).join(" ");
+          chunks.push({
+            id: `${doc.id}-chunk-${chunkIndex + 1}`,
+            docId: doc.id,
+            docIndex,
+            docTitle: doc.title,
+            chunkIndex,
+            startWord: start,
+            endWord: end,
+            text,
+            wordCount: end - start
+          });
+          chunkIndex += 1;
+          if (end === words.length) break;
+          start = end - overlap;
+        }
+      });
+
+      state.chunks = chunks;
+      invalidateFrom(3);
+      renderChunks();
+      $("chunkCountStat").textContent = chunks.length;
+      $("avgChunkStat").textContent = chunks.length ? Math.round(chunks.reduce((s, c) => s + c.wordCount, 0) / chunks.length) : 0;
+      completeStep(2);
+      setStatus(`${chunks.length} chunks created`, "green");
+      toast("Documents split into chunks.");
+    }
+
+    function renderChunks() {
+      if (!state.chunks.length) {
+        $("chunkOutput").className = "empty-state";
+        $("chunkOutput").textContent = "Create chunks to see how your source material is divided.";
+        return;
+      }
+      $("chunkOutput").className = "chunk-grid";
+      $("chunkOutput").innerHTML = state.chunks.map(chunk => `
+        <article class="chunk-card">
+          <div class="chunk-meta"><span class="tag">${escapeHtml(chunk.docTitle)}</span><span>${chunk.wordCount} words · #${chunk.chunkIndex + 1}</span></div>
+          <p>${escapeHtml(chunk.text)}</p>
+        </article>
+      `).join("");
+    }
+
+    function normalizeToken(token) {
+      let t = token.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!t) return "";
+      if (SYNONYMS[t]) t = SYNONYMS[t];
+      else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
+      else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
+      else if (t.length > 3 && t.endsWith("s")) t = t.slice(0, -1);
+      return t;
+    }
+
+    function tokenize(text, keepStopwords = false) {
+      return text.split(/\s+/).map(normalizeToken).filter(t => t && (keepStopwords || !STOPWORDS.has(t)));
+    }
+
+    function hashString(str, seed = 2166136261) {
+      let h = seed >>> 0;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function embedText(text, dim = state.vectorDim) {
+      const vec = new Array(dim).fill(0);
+      const tokens = tokenize(text);
+      const features = [...tokens];
+      for (let i = 0; i < tokens.length - 1; i++) features.push(tokens[i] + "_" + tokens[i + 1]);
+
+      features.forEach((feature, i) => {
+        const h1 = hashString(feature, 2166136261 + i);
+        const h2 = hashString(feature, 374761393 + i * 17);
+        const idx1 = h1 % dim;
+        const idx2 = h2 % dim;
+        const sign1 = (h1 & 1) ? 1 : -1;
+        const sign2 = (h2 & 1) ? 1 : -1;
+        const weight = feature.includes("_") ? 0.65 : 1;
+        vec[idx1] += sign1 * weight;
+        vec[idx2] += sign2 * weight * 0.55;
+      });
+
+      const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+      return norm ? vec.map(v => v / norm) : vec;
+    }
+
+    function embedChunks() {
+      if (!state.chunks.length) chunkDocuments();
+      if (!state.chunks.length) return;
+      state.vectorDim = Number($("vectorDim").value);
+      state.chunkVectors = state.chunks.map(chunk => ({ ...chunk, vector: embedText(chunk.text, state.vectorDim) }));
+      invalidateFrom(4);
+      renderVectors();
+      drawVectorSpace();
+      completeStep(3);
+      setStatus(`${state.chunkVectors.length} vectors indexed`, "green");
+      toast("Chunk embeddings generated and indexed.");
+    }
+
+    function compactVector(vector, count = 8) {
+      const shown = vector.slice(0, count).map(v => (Math.abs(v) < 0.0005 ? "0.000" : v.toFixed(3)));
+      return `[${shown.join(", ")}${vector.length > count ? ", …" : ""}]`;
+    }
+
+    function renderVectors() {
+      if (!state.chunkVectors.length) {
+        $("vectorList").className = "empty-state";
+        $("vectorList").textContent = "Vectors will appear here as arrays of numbers.";
+        return;
+      }
+      $("vectorList").className = "vector-list";
+      $("vectorList").innerHTML = state.chunkVectors.map((item, i) => `
+        <article class="vector-card">
+          <div class="vector-meta"><span>${escapeHtml(item.docTitle)} · chunk ${item.chunkIndex + 1}</span><span>${item.vector.length}D</span></div>
+          <div class="vector-code">${escapeHtml(compactVector(item.vector, 10))}</div>
+        </article>
+      `).join("");
+    }
+
+    function seededProjection(dim, axis) {
+      const basis = [];
+      for (let i = 0; i < dim; i++) {
+        const raw = axis === 0 ? Math.sin((i + 1) * 12.9898) : Math.cos((i + 1) * 78.233);
+        basis.push(raw);
+      }
+      const norm = Math.sqrt(basis.reduce((s, v) => s + v * v, 0)) || 1;
+      return basis.map(v => v / norm);
+    }
+
+    function project2D(vector) {
+      const bx = seededProjection(vector.length, 0);
+      const by = seededProjection(vector.length, 1);
+      return {
+        x: vector.reduce((s, v, i) => s + v * bx[i], 0),
+        y: vector.reduce((s, v, i) => s + v * by[i], 0)
+      };
+    }
+
+    function drawVectorSpace() {
+      const canvas = $("vectorCanvas");
+      const ctx = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
+      const cssWidth = canvas.clientWidth || 680;
+      const cssHeight = 365;
+      canvas.width = cssWidth * ratio;
+      canvas.height = cssHeight * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+      const points = state.chunkVectors.map((item, i) => ({ ...project2D(item.vector), label: `C${i + 1}`, type: "chunk" }));
+      if (state.queryVector.length) points.push({ ...project2D(state.queryVector), label: "Q", type: "query" });
+      if (!points.length) {
+        ctx.fillStyle = "#70839e";
+        ctx.font = "13px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("Generate embeddings to populate the vector space", cssWidth / 2, cssHeight / 2);
+        return;
+      }
+
+      const xs = points.map(p => p.x), ys = points.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const spanX = Math.max(0.2, maxX - minX), spanY = Math.max(0.2, maxY - minY);
+      const pad = 38;
+      const mapX = x => pad + ((x - minX + spanX * 0.12) / (spanX * 1.24)) * (cssWidth - pad * 2);
+      const mapY = y => cssHeight - pad - ((y - minY + spanY * 0.12) / (spanY * 1.24)) * (cssHeight - pad * 2);
+
+      ctx.strokeStyle = "rgba(148,163,184,0.08)";
+      ctx.lineWidth = 1;
+      for (let x = 28; x < cssWidth; x += 28) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cssHeight); ctx.stroke(); }
+      for (let y = 28; y < cssHeight; y += 28) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cssWidth, y); ctx.stroke(); }
+
+      points.forEach((p, i) => {
+        const x = mapX(p.x), y = mapY(p.y);
+        ctx.beginPath();
+        ctx.fillStyle = p.type === "query" ? "#45d5e8" : "#7c9aff";
+        ctx.shadowColor = p.type === "query" ? "rgba(69,213,232,.5)" : "rgba(124,154,255,.45)";
+        ctx.shadowBlur = 15;
+        ctx.arc(x, y, p.type === "query" ? 8 : 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = p.type === "query" ? "#bdf6ff" : "#cad7ff";
+        ctx.font = "700 11px system-ui";
+        ctx.fillText(p.label, x + 9, y - 8);
+      });
+    }
+
+    function embedQuery() {
+      if (!state.chunkVectors.length) embedChunks();
+      if (!state.chunkVectors.length) return;
+      const query = $("queryInput").value.trim();
+      if (!query) return toast("Enter a question first.");
+      state.query = query;
+      state.queryVector = embedText(query, state.vectorDim);
+      invalidateFrom(5);
+      renderQueryVector();
+      drawVectorSpace();
+      completeStep(4);
+      setStatus("Query embedded", "cyan");
+      toast("Question converted into a query vector.");
+    }
+
+    function renderQueryVector() {
+      const bars = $("queryVectorBars");
+      bars.innerHTML = "";
+      if (!state.queryVector.length) return;
+      const sample = state.queryVector.slice(0, 16);
+      const max = Math.max(...sample.map(Math.abs), 0.001);
+      sample.forEach(value => {
+        const bar = document.createElement("div");
+        bar.className = "vector-bar";
+        bar.style.height = `${Math.max(5, Math.abs(value) / max * 82)}px`;
+        bar.style.transform = value < 0 ? "scaleY(-1)" : "none";
+        bar.title = value.toFixed(4);
+        bars.appendChild(bar);
+      });
+      $("queryVectorText").textContent = compactVector(state.queryVector, 16);
+    }
+
+    function cosineSimilarity(a, b) {
+      if (!a.length || a.length !== b.length) return 0;
+      let dot = 0, na = 0, nb = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        na += a[i] * a[i];
+        nb += b[i] * b[i];
+      }
+      return dot / ((Math.sqrt(na) * Math.sqrt(nb)) || 1);
+    }
+
+    function lexicalScore(query, text) {
+      const q = new Set(tokenize(query));
+      const t = new Set(tokenize(text));
+      if (!q.size) return 0;
+      let overlap = 0;
+      q.forEach(token => { if (t.has(token)) overlap++; });
+      return overlap / q.size;
+    }
+
+    function retrieve() {
+      if (!state.queryVector.length) embedQuery();
+      if (!state.queryVector.length) return;
+      const useBoost = $("keywordBoost").checked;
+      state.ranked = state.chunkVectors.map(item => {
+        const cosine = cosineSimilarity(state.queryVector, item.vector);
+        const lexical = lexicalScore(state.query, item.text);
+        const finalScore = useBoost ? cosine * 0.8 + lexical * 0.2 : cosine;
+        return { ...item, cosine, lexical, finalScore };
+      }).sort((a, b) => b.finalScore - a.finalScore);
+
+      const k = Math.min(Number($("topK").value), state.ranked.length);
+      state.selected = state.ranked.slice(0, k);
+      invalidateFrom(6);
+      renderRetrieval();
+      completeStep(5);
+      setStatus(`Top ${k} chunks retrieved`, "green");
+      toast(`Retrieved the ${k} highest-ranked chunks.`);
+    }
+
+    function renderRetrieval() {
+      if (!state.ranked.length) {
+        $("retrievalOutput").className = "empty-state";
+        $("retrievalOutput").textContent = "Run retrieval to rank all chunks by cosine similarity.";
+        return;
+      }
+      const selectedIds = new Set(state.selected.map(x => x.id));
+      const topScore = Math.max(...state.ranked.map(x => x.finalScore), 0.0001);
+      $("retrievalOutput").className = "";
+      $("retrievalOutput").innerHTML = `
+        <div style="overflow:auto;border:1px solid var(--border);border-radius:13px">
+          <table class="retrieval-table">
+            <thead><tr><th>Rank</th><th>Chunk</th><th>Preview</th><th>Similarity</th><th>Used?</th></tr></thead>
+            <tbody>
+              ${state.ranked.map((item, i) => {
+                const normalized = Math.max(0, item.finalScore / topScore) * 100;
+                return `<tr class="${selectedIds.has(item.id) ? "selected" : ""}">
+                  <td>#${i + 1}</td>
+                  <td><strong>${escapeHtml(item.docTitle)}</strong><br><span style="color:var(--muted-2)">chunk ${item.chunkIndex + 1}</span></td>
+                  <td>${escapeHtml(item.text.slice(0, 150))}${item.text.length > 150 ? "…" : ""}</td>
+                  <td class="score-wrap"><span class="score-value">${item.finalScore.toFixed(3)}</span><div class="score-track"><div class="score-fill" style="width:${normalized}%"></div></div></td>
+                  <td>${selectedIds.has(item.id) ? '<span class="tag">Top‑k context</span>' : '<span style="color:var(--muted-2)">No</span>'}</td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildPrompt() {
+      if (!state.selected.length) retrieve();
+      if (!state.selected.length) return;
+      const context = state.selected.map((item, i) => `[Source ${i + 1}: ${item.docTitle}, chunk ${item.chunkIndex + 1}]\n${item.text}`).join("\n\n");
+      state.prompt = `SYSTEM\nYou are a helpful assistant. Answer the user's question using only the supplied context. If the context is insufficient, say what is missing. Cite the relevant source numbers.\n\nCONTEXT\n${context}\n\nUSER QUESTION\n${state.query}\n\nASSISTANT ANSWER`;
+      $("promptOutput").textContent = state.prompt;
+      completeStep(6);
+      setStatus("Prompt augmented with context", "cyan");
+      toast("Question and retrieved context assembled into one prompt.");
+    }
+
+    function splitSentences(text) {
+      return text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s => s.trim()).filter(Boolean) || [];
+    }
+
+    function sentenceRelevance(sentence, query) {
+      const q = new Set(tokenize(query));
+      const s = tokenize(sentence);
+      if (!s.length) return 0;
+      let overlap = 0;
+      s.forEach(token => { if (q.has(token)) overlap += 1; });
+      const exactNumbers = (sentence.match(/\b\d+(?::\d+)?\b/g) || []).length;
+      return overlap / Math.sqrt(s.length) + exactNumbers * 0.06;
+    }
+
+    function generateAnswer() {
+      if (!state.prompt) buildPrompt();
+      if (!state.prompt) return;
+
+      const candidates = [];
+      state.selected.forEach((item, sourceIndex) => {
+        splitSentences(item.text).forEach(sentence => {
+          candidates.push({
+            sentence,
+            item,
+            sourceIndex,
+            score: sentenceRelevance(sentence, state.query)
+          });
+        });
+      });
+      candidates.sort((a, b) => b.score - a.score);
+
+      const picked = [];
+      const seen = new Set();
+      for (const candidate of candidates) {
+        const key = normalizeToken(candidate.sentence).slice(0, 100);
+        if (!seen.has(key) && candidate.score > 0) {
+          seen.add(key);
+          picked.push(candidate);
+        }
+        if (picked.length >= 3) break;
+      }
+
+      const output = $("answerOutput");
+      output.classList.remove("empty");
+      if (!picked.length) {
+        output.innerHTML = "The retrieved context does not contain enough clearly relevant information to answer the question. Try changing the query, chunk size, or top‑k value.";
+        $("groundingStat").textContent = "Low";
+      } else {
+        output.innerHTML = picked.map(p => `${escapeHtml(p.sentence)} <span class="citation">${escapeHtml(p.item.docTitle)} · chunk ${p.item.chunkIndex + 1}</span>`).join(" ");
+        $("groundingStat").textContent = picked[0].score > 0.6 ? "High" : "Medium";
+      }
+
+      const contextWords = state.selected.reduce((sum, item) => sum + wordCount(item.text), 0);
+      const answerWords = wordCount(output.textContent);
+      $("contextChunksStat").textContent = state.selected.length;
+      $("contextWordsStat").textContent = contextWords;
+      $("answerWordsStat").textContent = answerWords;
+      completeStep(7);
+      setActiveStep(7);
+      setStatus("RAG simulation complete", "green");
+      toast("Grounded answer generated from retrieved context.");
+    }
+
+    async function runAll() {
+      if (state.runningAll) return;
+      state.runningAll = true;
+      setStatus("Running pipeline…", "cyan");
+      try {
+        prepareDocuments(); await sleep(350);
+        chunkDocuments(); await sleep(450);
+        embedChunks(); await sleep(500);
+        embedQuery(); await sleep(450);
+        retrieve(); await sleep(500);
+        buildPrompt(); await sleep(450);
+        generateAnswer();
+        $("step-7").scrollIntoView({ behavior: "smooth", block: "start" });
+      } finally {
+        state.runningAll = false;
+      }
+    }
+
+    function resetApp() {
+      state.docs = [];
+      state.chunks = [];
+      state.chunkVectors = [];
+      state.query = "";
+      state.queryVector = [];
+      state.ranked = [];
+      state.selected = [];
+      state.prompt = "";
+      state.currentStep = 1;
+      state.completedStep = 0;
+      state.runningAll = false;
+
+      initDocs(DEFAULT_DOCS);
+      $("chunkSize").value = 48;
+      $("chunkOverlap").value = 8;
+      $("vectorDim").value = 32;
+      $("topK").value = 3;
+      $("keywordBoost").checked = false;
+      $("queryInput").value = "How many days can employees work remotely, and what approval is required?";
+      updateRangeLabels();
+
+      $("docCountStat").textContent = "0";
+      $("wordCountStat").textContent = "0";
+      $("chunkCountStat").textContent = "0";
+      $("avgChunkStat").textContent = "0";
+      $("chunkOutput").className = "empty-state";
+      $("chunkOutput").textContent = "Create chunks to see how your source material is divided.";
+      $("vectorList").className = "empty-state";
+      $("vectorList").textContent = "Vectors will appear here as arrays of numbers.";
+      $("queryVectorBars").innerHTML = "";
+      $("queryVectorText").textContent = "No query embedding yet.";
+      $("retrievalOutput").className = "empty-state";
+      $("retrievalOutput").textContent = "Run retrieval to rank all chunks by cosine similarity.";
+      $("promptOutput").textContent = "The prompt will appear here after retrieval.";
+      $("answerOutput").className = "answer-box empty";
+      $("answerOutput").textContent = "No answer generated yet.";
+      ["contextChunksStat", "contextWordsStat", "answerWordsStat"].forEach(id => $(id).textContent = "0");
+      $("groundingStat").textContent = "—";
+
+      unlockThrough(1);
+      setActiveStep(1);
+      updateProgress();
+      drawVectorSpace();
+      setStatus("Ready to ingest", "amber");
+      toast("Simulator reset.");
+    }
+
+    function updateRangeLabels() {
+      $("chunkSizeValue").textContent = $("chunkSize").value;
+      $("chunkOverlapValue").textContent = $("chunkOverlap").value;
+      $("vectorDimValue").textContent = $("vectorDim").value;
+      $("topKValue").textContent = $("topK").value;
+    }
+
+    function wireEvents() {
+      $("addDocBtn").addEventListener("click", () => addDocumentCard());
+      $("prepareDocsBtn").addEventListener("click", prepareDocuments);
+      $("chunkBtn").addEventListener("click", chunkDocuments);
+      $("embedChunksBtn").addEventListener("click", embedChunks);
+      $("embedQueryBtn").addEventListener("click", embedQuery);
+      $("retrieveBtn").addEventListener("click", retrieve);
+      $("buildPromptBtn").addEventListener("click", buildPrompt);
+      $("generateBtn").addEventListener("click", generateAnswer);
+      $("runAgainBtn").addEventListener("click", runAll);
+      $("runAllTopBtn").addEventListener("click", runAll);
+      $("runAllHeroBtn").addEventListener("click", runAll);
+      $("resetBtn").addEventListener("click", resetApp);
+
+      $("copyPromptBtn").addEventListener("click", async () => {
+        if (!state.prompt) return toast("Build the prompt first.");
+        try {
+          await navigator.clipboard.writeText(state.prompt);
+          toast("Prompt copied to clipboard.");
+        } catch {
+          toast("Clipboard access was blocked by the browser.");
+        }
+      });
+
+      ["chunkSize", "chunkOverlap", "vectorDim", "topK"].forEach(id => $(id).addEventListener("input", () => {
+        updateRangeLabels();
+        const stepMap = { chunkSize: 2, chunkOverlap: 2, vectorDim: 3, topK: 5 };
+        invalidateFrom(stepMap[id]);
+      }));
+
+      $("keywordBoost").addEventListener("change", () => invalidateFrom(5));
+      $("queryInput").addEventListener("input", () => invalidateFrom(4));
+      $("queryInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") embedQuery();
+      });
+
+      document.querySelectorAll(".sample-query").forEach(btn => {
+        btn.addEventListener("click", () => {
+          $("queryInput").value = btn.textContent;
+          invalidateFrom(4);
+          embedQuery();
+        });
+      });
+
+      document.querySelectorAll("[data-scroll]").forEach(btn => btn.addEventListener("click", () => {
+        $(btn.dataset.scroll).scrollIntoView({ behavior: "smooth", block: "start" });
+      }));
+
+      window.addEventListener("resize", () => drawVectorSpace());
+    }
+
+    initPipeline();
+    initDocs();
+    wireEvents();
+    updateRangeLabels();
+    unlockThrough(1);
+    updateProgress();
+    drawVectorSpace();
+  </script>
+</body>
+</html>
